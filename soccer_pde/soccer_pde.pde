@@ -1,60 +1,39 @@
-ArrayList<Bullet> bullets;  // 発射されたボールたち
-boolean scored = false;     // ゴールしたかどうかのフラグ
+ArrayList<Bullet> bullets;  
+Goalkeeper keeper;           
+boolean scored = false;      
+boolean blocked = false;     
+
+int messageTimer = 0;   // ← 表示タイマー（フレーム単位）
 
 void setup(){
   size(800,500);
   bullets = new ArrayList<Bullet>();
+  keeper = new Goalkeeper();  
 }
 
 void draw(){
-  // --- フィールド描画 ---
   background(#11F51A);
+  drawField();
 
-  // ペナルティエリア
-  stroke(#ffffff);
-  strokeWeight(7);
-  line(0,50,800,50);     // ゴールライン
+  keeper.update();
+  keeper.display();
 
-  strokeWeight(5);
-  line(100,50,100,350);  // 左エリアライン
-  line(700,50,700,350);  // 右エリアライン
-  line(100,350,700,350); // ペナルティエリア下端
-
-  // ゴールエリア
-  line(200,50,200,180);
-  line(600,50,600,180);
-  line(200,180,600,180);
-
-  // ペナルティアーク
-  noFill();
-  arc(400,350,200,100,0,PI);
-
-  // ペナルティマーク
-  ellipse(400,265,10,10);
-
-  // --- ゴール---
-  stroke(255);
-  strokeWeight(4);
-  noFill();
-  rect(250, -100, 300, 150);   // ゴール枠
-
-  // --- マウスに追従するボール（上下のみ動く） ---
+  // マウスボール
   float mainR = 30;
-  float fixedX = width/2;        // 中央固定
-  float py = constrain(mouseY, 100, height-100);  // 上下の範囲を制限
-  fill(255, 200, 0);  // 黄色いボール
-  noStroke();
+  float fixedX = width/2;
+  float py = constrain(mouseY, 100, height-100);
+  fill(255,200,0);
   ellipse(fixedX, py, mainR*2, mainR*2);
 
-  // --- くっついている弾（常に前に表示＝上方向） ---
+  // くっついてる弾
   float bulletR = 15;
   float attachDist = mainR + bulletR;
   float bx = fixedX;
   float by = py - attachDist;
-  fill(255, 100, 100);
+  fill(255,100,100);
   ellipse(bx, by, bulletR*2, bulletR*2);
 
-  // --- 発射されたボールを描画 ---
+  // 発射された弾の処理
   for (int i = bullets.size()-1; i >= 0; i--) {
     Bullet b = bullets.get(i);
     b.update();
@@ -63,27 +42,68 @@ void draw(){
     // ゴール判定
     if (b.checkGoal()) {
       scored = true;
+      blocked = false;
+      messageTimer = frameCount;   // ← メッセージ開始時刻
       bullets.remove(i);
       continue;
     }
 
-    if (b.isOutOfBounds()) {
+    // キーパー判定
+    if (keeper.blocks(b)) {
+      blocked = true;
+      scored = false;
+      messageTimer = frameCount;   // ← メッセージ開始時刻
       bullets.remove(i);
+      continue;
     }
+
+    if (b.isOutOfBounds()) bullets.remove(i);
   }
 
-  // --- ゴールしたら表示 ---
-  if (scored) {
-    fill(255, 255, 0);
-    textSize(50);
+  // 結果表示（1秒=約60フレーム）
+  if (frameCount - messageTimer < 60) {
     textAlign(CENTER, CENTER);
-    text("GOAL!!!", width/2, height/2);
+    textSize(50);
+    if (scored) {
+      fill(255,255,0);
+      text("GOAL!!!", width/2, height/2);
+    } else if (blocked) {
+      fill(255,0,0);
+      text("NO GOAL!", width/2, height/2);
+    }
   }
 }
 
-// マウス左クリックでシュート（ゴール方向へ）
-void mousePressed() {
-  if (mouseButton == LEFT) {
+// --- フィールド描画 ---
+void drawField(){
+  stroke(#ffffff);
+  strokeWeight(7);
+  line(0,50,800,50);
+  strokeWeight(5);
+  line(100,50,100,350);
+  line(700,50,700,350);
+  line(100,350,700,350);
+  line(200,50,200,180);
+  line(600,50,600,180);
+  line(200,180,600,180);
+  noFill();
+  arc(400,350,200,100,0,PI);
+  ellipse(400,265,10,10);
+
+  // ゴール枠とネット
+  stroke(255);
+  strokeWeight(4);
+  noFill();
+  rect(250,-100,300,150);
+  stroke(200);
+  strokeWeight(1);
+  for (int x = 250; x <= 550; x += 20) line(x,-100,x,50);
+  for (int y = -100; y <= 50; y += 20) line(250,y,550,y);
+}
+
+// --- シュート ---
+void mousePressed(){
+  if (mouseButton == LEFT){
     float mainR = 30;
     float bulletR = 15;
     float attachDist = mainR + bulletR;
@@ -94,11 +114,9 @@ void mousePressed() {
     float bx = fixedX;
     float by = py - attachDist;
 
-    // --- ゴールの座標（ゴール中央） ---
     float goalX = width/2;
     float goalY = 50;
 
-    // 方向ベクトルを計算
     float dx = goalX - bx;
     float dy = goalY - by;
     float len = sqrt(dx*dx + dy*dy);
@@ -113,41 +131,43 @@ void mousePressed() {
   }
 }
 
-// --- ボールクラス ---
+// --- Bullet ---
 class Bullet {
-  float x, y;
-  float vx, vy;
-  float r;
+  float x, y, vx, vy, r;
+  Bullet(float x, float y, float vx, float vy, float r){
+    this.x=x; this.y=y; this.vx=vx; this.vy=vy; this.r=r;
+  }
+  void update(){ x+=vx; y+=vy; }
+  void display(){ fill(255,100,100); ellipse(x,y,r*2,r*2); }
+  boolean isOutOfBounds(){ return (x<-r || x>width+r || y<-r || y>height+r); }
+  boolean checkGoal(){ return (x>200 && x<600 && y>-100 && y<50); }
+}
 
-  Bullet(float x, float y, float vx, float vy, float r) {
-    this.x = x;
-    this.y = y;
-    this.vx = vx;
-    this.vy = vy;
-    this.r = r;
+// --- Goalkeeper ---
+class Goalkeeper {
+  float x, y, w, h;
+  float vx = 3;
+
+  Goalkeeper() {
+    x = width/2;
+    y = 100;   // ← ゴールラインより前（フィールド内）
+    w = 80;
+    h = 20;
   }
 
   void update() {
     x += vx;
-    y += vy;
+    if (x < 250 + w/2 || x > 550 - w/2) vx *= -1;
   }
 
   void display() {
-    fill(255, 100, 100);
-    noStroke();
-    ellipse(x, y, r*2, r*2);
+    fill(0,100,255);
+    rectMode(CENTER);
+    rect(x, y, w, h, 10);
   }
 
-  boolean isOutOfBounds() {
-    return (x < -r || x > width+r || y < -r || y > height+r);
-  }
-
-  // --- ゴール判定 ---
-  boolean checkGoal() {
-  // ゴール枠の範囲 (x:200〜600, y:-100〜50)
-  if (x > 200 && x < 600 && y > -100 && y < 50) {
-    return true;
-  }
-  return false;
+  boolean blocks(Bullet b){
+    return (b.x > x - w/2 && b.x < x + w/2 &&
+            b.y > y - h/2 && b.y < y + h/2);
   }
 }
