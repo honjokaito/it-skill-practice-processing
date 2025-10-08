@@ -1,4 +1,4 @@
-// アイムジャグラー風スロットゲーム (Processing)
+// スロットゲーム (Processing)
 // setup() に size() を移動済みバージョン
 
 import java.util.Collections;
@@ -103,3 +103,4 @@ void shuffleArray(String[] array) {
     array[j] = temp;
   }
 }
+
