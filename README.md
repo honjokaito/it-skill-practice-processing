@@ -53,4 +53,5 @@
 ---
 
 ## スクリーンショット / GIF
-<img width="801" height="523" alt="スクリーンショット 2025-10-01 142933" src="https://github.com/user-attachments/assets/9276d1f5-cd15-4ecd-bc40-364c644839e9" />
+<img width="801" height="490" alt="image" src="https://github.com/user-attachments/assets/e8adc024-d3f8-4b42-9df8-57403737fd91" />
+
